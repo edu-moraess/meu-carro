@@ -15,7 +15,7 @@ import plotly.express as px
 import requests
 import streamlit as st
 from PIL import Image, ImageOps
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, create_engine
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -67,7 +67,7 @@ class User(Base):
     trial_started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
     trial_ends_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     plan: Mapped[str] = mapped_column(String(20), default="trial", nullable=False)
-    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     referral_code: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=False)
 
 class Vehicle(Base):
