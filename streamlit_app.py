@@ -17,7 +17,7 @@ from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Tex
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-APP_NAME = "Meu Veículo"
+APP_NAME = "MOVEXA"
 VEHICLE_TYPES = ["Carro", "Moto", "Caminhão", "Ônibus", "Van", "Utilitário", "Máquina", "Outro"]
 FUEL_TYPES = ["Gasolina", "Etanol", "Diesel", "Flex", "GNV", "Elétrico", "Híbrido", "Outro"]
 
@@ -58,25 +58,95 @@ GEMINI_MODEL = secret("GEMINI_MODEL", "gemini-2.5-flash")
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {})
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
-class Base(DeclarativeBase): pass
+class Base(DeclarativeBase):
+    pass
+
 
 class User(Base):
-    __tablename__="users"; id:Mapped[int]=mapped_column(Integer,primary_key=True); email:Mapped[str]=mapped_column(String(255),unique=True,index=True,nullable=False); password_hash:Mapped[str]=mapped_column(String(255),nullable=False); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False); trial_started_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False); trial_ends_at:Mapped[datetime]=mapped_column(DateTime,nullable=False); plan:Mapped[str]=mapped_column(String(20),default="trial",nullable=False); is_active:Mapped[bool]=mapped_column(default=True,nullable=False); referral_code:Mapped[str]=mapped_column(String(20),unique=True,index=True,nullable=False)
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    trial_started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    trial_ends_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    plan: Mapped[str] = mapped_column(String(20), default="trial", nullable=False)
+    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
+    referral_code: Mapped[str] = mapped_column(String(20), unique=True, index=True, nullable=False)
+
 
 class Vehicle(Base):
-    __tablename__="vehicles"; id:Mapped[int]=mapped_column(Integer,primary_key=True); user_id:Mapped[int]=mapped_column(ForeignKey("users.id",ondelete="CASCADE"),index=True,nullable=False); brand:Mapped[str]=mapped_column(String(80),nullable=False); model:Mapped[str]=mapped_column(String(80),nullable=False); year:Mapped[int]=mapped_column(Integer,nullable=False); version:Mapped[Optional[str]]=mapped_column(String(120)); fuel_type:Mapped[str]=mapped_column(String(30),default="Gasolina",nullable=False); current_odometer:Mapped[int]=mapped_column(Integer,default=0,nullable=False); license_plate:Mapped[Optional[str]]=mapped_column(String(20)); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False)
+    __tablename__ = "vehicles"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    brand: Mapped[str] = mapped_column(String(80), nullable=False)
+    model: Mapped[str] = mapped_column(String(80), nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    version: Mapped[Optional[str]] = mapped_column(String(120))
+    fuel_type: Mapped[str] = mapped_column(String(30), default="Gasolina", nullable=False)
+    current_odometer: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    license_plate: Mapped[Optional[str]] = mapped_column(String(20))
+    vehicle_type: Mapped[str] = mapped_column(String(40), default="Carro", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 class FuelRecord(Base):
-    __tablename__="fuel_records"; id:Mapped[int]=mapped_column(Integer,primary_key=True); vehicle_id:Mapped[int]=mapped_column(ForeignKey("vehicles.id",ondelete="CASCADE"),index=True,nullable=False); date:Mapped[date]=mapped_column(Date,nullable=False); odometer:Mapped[int]=mapped_column(Integer,nullable=False); liters:Mapped[Decimal]=mapped_column(Numeric(10,3),nullable=False); price_per_liter:Mapped[Decimal]=mapped_column(Numeric(10,3),nullable=False); total_cost:Mapped[Decimal]=mapped_column(Numeric(12,2),nullable=False); fuel_type:Mapped[str]=mapped_column(String(30),nullable=False); station:Mapped[Optional[str]]=mapped_column(String(120)); notes:Mapped[Optional[str]]=mapped_column(Text); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False)
+    __tablename__ = "fuel_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"), index=True, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    odometer: Mapped[int] = mapped_column(Integer, nullable=False)
+    liters: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    price_per_liter: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    total_cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    fuel_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    station: Mapped[Optional[str]] = mapped_column(String(120))
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 class MaintenanceRecord(Base):
-    __tablename__="maintenance_records"; id:Mapped[int]=mapped_column(Integer,primary_key=True); vehicle_id:Mapped[int]=mapped_column(ForeignKey("vehicles.id",ondelete="CASCADE"),index=True,nullable=False); date:Mapped[date]=mapped_column(Date,nullable=False); odometer:Mapped[int]=mapped_column(Integer,nullable=False); category:Mapped[str]=mapped_column(String(50),nullable=False); description:Mapped[str]=mapped_column(String(255),nullable=False); workshop:Mapped[Optional[str]]=mapped_column(String(120)); cost:Mapped[Decimal]=mapped_column(Numeric(12,2),nullable=False); next_due_odometer:Mapped[Optional[int]]=mapped_column(Integer); next_due_date:Mapped[Optional[date]]=mapped_column(Date); notes:Mapped[Optional[str]]=mapped_column(Text); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False)
+    __tablename__ = "maintenance_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"), index=True, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    odometer: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    workshop: Mapped[Optional[str]] = mapped_column(String(120))
+    cost: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    next_due_odometer: Mapped[Optional[int]] = mapped_column(Integer)
+    next_due_date: Mapped[Optional[date]] = mapped_column(Date)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 class ExpenseRecord(Base):
-    __tablename__="expense_records"; id:Mapped[int]=mapped_column(Integer,primary_key=True); vehicle_id:Mapped[int]=mapped_column(ForeignKey("vehicles.id",ondelete="CASCADE"),index=True,nullable=False); date:Mapped[date]=mapped_column(Date,nullable=False); category:Mapped[str]=mapped_column(String(50),nullable=False); description:Mapped[str]=mapped_column(String(255),nullable=False); amount:Mapped[Decimal]=mapped_column(Numeric(12,2),nullable=False); notes:Mapped[Optional[str]]=mapped_column(Text); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False)
+    __tablename__ = "expense_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    vehicle_id: Mapped[int] = mapped_column(ForeignKey("vehicles.id", ondelete="CASCADE"), index=True, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 class Feedback(Base):
-    __tablename__="feedback"; id:Mapped[int]=mapped_column(Integer,primary_key=True); user_id:Mapped[int]=mapped_column(ForeignKey("users.id",ondelete="CASCADE"),index=True,nullable=False); rating:Mapped[int]=mapped_column(Integer,nullable=False); message:Mapped[str]=mapped_column(Text,default="",nullable=False); created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow,nullable=False)
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    message: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
 
 try:
     Base.metadata.create_all(engine)
@@ -86,10 +156,6 @@ try:
             conn.execute(text("ALTER TABLE vehicles ADD COLUMN vehicle_type VARCHAR(40) NOT NULL DEFAULT 'Carro'"))
 except SQLAlchemyError:
     st.error("Não foi possível conectar ao banco. Verifique DATABASE_URL e as credenciais."); st.stop()
-
-# vehicle_type is added dynamically so existing databases remain compatible.
-if not hasattr(Vehicle, "vehicle_type"):
-    Vehicle.vehicle_type = mapped_column(String(40), default="Carro", nullable=False)  # type: ignore[attr-defined]
 
 
 def money(v:object)->str:
@@ -156,7 +222,7 @@ def auth_page():
     with a:
         st.markdown('<div style="margin-top:8vh"><div class="eyebrow">GESTÃO DE VEÍCULOS</div><h1 style="font-size:3.2rem;letter-spacing:-.07em;margin:.3rem 0">Sua frota.<br>Sem planilhas.</h1><p class="muted" style="font-size:1rem;max-width:520px">Controle abastecimentos, manutenção, despesas e indicadores de qualquer veículo em um só lugar.</p></div>',unsafe_allow_html=True)
     with b:
-        st.markdown('<div class="hero" style="margin-top:5vh">',unsafe_allow_html=True);st.markdown(f'<div class="brand"><div class="brand-mark">🚘</div><div><div class="brand-title">{APP_NAME}</div><div class="brand-sub">Vehicle intelligence platform</div></div></div>',unsafe_allow_html=True)
+        st.markdown('<div class="hero" style="margin-top:5vh">',unsafe_allow_html=True);st.markdown(f'<div class="brand"><div class="brand-mark">🚘</div><div><div class="brand-title">{APP_NAME}</div><div class="brand-sub">Gestão inteligente de veículos</div></div></div>',unsafe_allow_html=True)
         t1,t2=st.tabs(["Entrar","Criar conta"])
         with t1:
             with st.form("login"):
@@ -304,7 +370,7 @@ def main():
     if not user:auth_page();return
     user=refresh_plan(user.id);v=vehicle_for(user.id)
     with st.sidebar:
-        st.markdown(f'<div class="brand"><div class="brand-mark">🚘</div><div><div class="brand-title">{APP_NAME}</div><div class="brand-sub">Vehicle intelligence platform</div></div></div>',unsafe_allow_html=True)
+        st.markdown(f'<div class="brand"><div class="brand-mark">🚘</div><div><div class="brand-title">{APP_NAME}</div><div class="brand-sub">Gestão inteligente de veículos</div></div></div>',unsafe_allow_html=True)
         if v:st.markdown(f'<div class="status good">● {getattr(v,"vehicle_type","Carro")} · {v.brand} {v.model}</div>',unsafe_allow_html=True)
         st.caption(f"{max(0,(user.trial_ends_at.date()-date.today()).days)} dias restantes" if user.plan=="trial" else "Plano Free")
         page=st.radio("Navegação",["Início","Abastecimentos","Manutenção","Despesas","Histórico","Registrar com IA","Insights","Configurações"],label_visibility="collapsed") if v else "Configurações"
