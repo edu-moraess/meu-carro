@@ -22,25 +22,19 @@ jobs:
           from pathlib import Path
           p = Path('streamlit_app.py')
           s = p.read_text(encoding='utf-8')
-          old = 'upload = st.file_uploader("Ou envie uma foto de recibo", type=["jpg","jpeg","png","webp"], max_upload_size=10)'
-          new = 'upload = st.file_uploader("Ou envie uma foto de recibo", type=["jpg", "jpeg", "png", "webp"])'
-          if old in s:
-              s = s.replace(old, new)
-          old = 'next_date = c2.date_input("Próxima data (opcional)", value=None)'
-          new = 'has_next_date = c2.checkbox("Definir próxima data")\n        next_date = c2.date_input("Próxima data", value=date.today(), disabled=not has_next_date)'
-          if old in s:
-              s = s.replace(old, new)
-          old = 'next_due_date=next_date if next_date else None,'
-          new = 'next_due_date=next_date if has_next_date else None,'
-          if old in s:
-              s = s.replace(old, new)
-          old = 'url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"'
-          new = 'url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"'
-          if old in s:
-              s = s.replace(old, new)
-          old = 'response = requests.post(url, json=payload, timeout=25)'
-          new = 'response = requests.post(url, json=payload, headers={"x-goog-api-key": GEMINI_API_KEY}, timeout=25)'
-          if old in s:
+          replacements = {
+              'upload = st.file_uploader("Ou envie uma foto de recibo", type=["jpg","jpeg","png","webp"], max_upload_size=10)':
+                  'upload = st.file_uploader("Ou envie uma foto de recibo", type=["jpg", "jpeg", "png", "webp"])',
+              'next_date = c2.date_input("Próxima data (opcional)", value=None)':
+                  'has_next_date = c2.checkbox("Definir próxima data")\n        next_date = c2.date_input("Próxima data", value=date.today(), disabled=not has_next_date)',
+              'next_due_date=next_date if next_date else None,':
+                  'next_due_date=next_date if has_next_date else None,',
+              'url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"':
+                  'url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"',
+              'response = requests.post(url, json=payload, timeout=25)':
+                  'response = requests.post(url, json=payload, headers={"x-goog-api-key": GEMINI_API_KEY}, timeout=25)',
+          }
+          for old, new in replacements.items():
               s = s.replace(old, new)
           p.write_text(s, encoding='utf-8')
           PY
