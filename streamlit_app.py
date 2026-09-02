@@ -17,7 +17,100 @@ from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Tex
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
-st.set_page_config(page_title="Meu Carro", page_icon="🚗", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="MOVEXA", page_icon="assets/movexa_logo.svg", layout="wide", initial_sidebar_state="expanded")
+
+# MOVEXA visual identity. No fixed dark/light mode is imposed here: Streamlit's
+# native theme selector remains in control of the final appearance.
+st.markdown(
+    """
+    <style>
+    :root {
+        --movexa-cyan: #16d9d2;
+        --movexa-blue: #2496e8;
+    }
+    .movexa-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.85rem;
+        margin: 0 0 1.6rem 0;
+    }
+    .movexa-brand img {
+        width: 58px;
+        height: 58px;
+        object-fit: contain;
+    }
+    .movexa-brand-name {
+        font-size: 1.55rem;
+        font-weight: 750;
+        letter-spacing: -0.035em;
+        line-height: 1;
+    }
+    .movexa-brand-subtitle {
+        margin-top: 0.28rem;
+        opacity: 0.65;
+        font-size: 0.82rem;
+    }
+    .movexa-hero {
+        padding: 0.25rem 0 1.15rem 0;
+    }
+    .movexa-kicker {
+        color: var(--movexa-cyan);
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        margin-bottom: 0.35rem;
+    }
+    .movexa-hero h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 3rem);
+        letter-spacing: -0.055em;
+    }
+    .movexa-hero p {
+        margin-top: 0.5rem;
+        opacity: 0.7;
+        font-size: 1rem;
+    }
+    .movexa-vehicle {
+        padding: 1.25rem 1.4rem;
+        border: 1px solid rgba(128, 128, 128, 0.18);
+        border-radius: 18px;
+        margin: 0.2rem 0 1.25rem 0;
+    }
+    .movexa-vehicle-label {
+        color: var(--movexa-cyan);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+    .movexa-vehicle-name {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin-top: 0.2rem;
+    }
+    .movexa-vehicle-meta {
+        opacity: 0.68;
+        margin-top: 0.3rem;
+        font-size: 0.9rem;
+    }
+    .movexa-section {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 1.15rem 0 0.65rem 0;
+    }
+    [data-testid="stMetric"] {
+        border-radius: 16px;
+        padding: 1rem 1.05rem;
+        border: 1px solid rgba(128, 128, 128, 0.16);
+    }
+    .stButton > button[kind="primary"] {
+        border-color: var(--movexa-cyan);
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 def secret(name: str, default: str = "") -> str:
@@ -31,7 +124,6 @@ def secret(name: str, default: str = "") -> str:
 
 
 def normalize_database_url(url: str) -> str:
-    # psycopg v3 is installed; make PostgreSQL URLs explicit for SQLAlchemy.
     if url.startswith("postgres://"):
         return "postgresql+psycopg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
@@ -42,7 +134,6 @@ def normalize_database_url(url: str) -> str:
 DATABASE_URL = normalize_database_url(secret("DATABASE_URL", "sqlite:///meu_carro.db"))
 GEMINI_API_KEY = secret("GEMINI_API_KEY")
 GEMINI_MODEL = secret("GEMINI_MODEL", "gemini-2.5-flash")
-
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
@@ -133,14 +224,12 @@ class Feedback(Base):
 
 try:
     Base.metadata.create_all(engine)
-except SQLAlchemyError as exc:
+except SQLAlchemyError:
     st.error("Não foi possível conectar ao banco de dados. Verifique DATABASE_URL e as credenciais do banco.")
     st.stop()
 
 
-# -----------------------------------------------------------------------------
 # Helpers
-# -----------------------------------------------------------------------------
 
 def money(value: object) -> str:
     try:
@@ -289,7 +378,6 @@ def save_ai_result(vehicle: Vehicle, data: dict) -> tuple[bool, str]:
     odometer = int(float(odo_raw)) if odo_raw not in (None, "") else vehicle.current_odometer
     if odometer < max_odometer(vehicle.id):
         return False, "A quilometragem informada pela IA é menor que um registro existente. Revise antes de salvar."
-
     with SessionLocal() as db:
         if kind == "fuel":
             if data.get("liters") in (None, "") or data.get("price_per_liter") in (None, ""):
@@ -323,13 +411,10 @@ def save_ai_result(vehicle: Vehicle, data: dict) -> tuple[bool, str]:
     return True, "Registro salvo com sucesso."
 
 
-# -----------------------------------------------------------------------------
 # Pages
-# -----------------------------------------------------------------------------
 
 def auth_page() -> None:
-    st.title("🚗 Meu Carro")
-    st.caption("Controle combustível, manutenção e despesas do seu veículo.")
+    st.markdown('<div class="movexa-hero"><div class="movexa-kicker">Gestão inteligente de veículos</div><h1>Bem-vindo ao MOVEXA</h1><p>Centralize combustível, manutenção e despesas em um só lugar.</p></div>', unsafe_allow_html=True)
     login_tab, register_tab = st.tabs(["Entrar", "Criar conta"])
     with login_tab:
         with st.form("login_form"):
@@ -393,8 +478,11 @@ def vehicle_form(user: User) -> None:
 
 
 def home_page(vehicle: Vehicle) -> None:
-    st.title("Início")
-    st.caption(f"{vehicle.brand} {vehicle.model} · {vehicle.year} · {vehicle.current_odometer:,} km".replace(",", "."))
+    st.markdown(f'<div class="movexa-hero"><div class="movexa-kicker">Visão geral</div><h1>Seu veículo, sob controle.</h1><p>Uma visão clara dos custos e do histórico real do seu veículo.</p></div>', unsafe_allow_html=True)
+    vehicle_meta = f"{vehicle.year} · {vehicle.current_odometer:,} km · {vehicle.fuel_type}".replace(",", ".")
+    version = f" · {vehicle.version}" if vehicle.version else ""
+    st.markdown(f'<div class="movexa-vehicle"><div class="movexa-vehicle-label">Veículo ativo</div><div class="movexa-vehicle-name">{vehicle.brand} {vehicle.model}{version}</div><div class="movexa-vehicle-meta">{vehicle_meta}</div></div>', unsafe_allow_html=True)
+
     fuels, maint, expenses = load_records(vehicle.id)
     today = date.today()
     month_fuel = [x for x in fuels if x.date.year == today.year and x.date.month == today.month]
@@ -407,23 +495,57 @@ def home_page(vehicle: Vehicle) -> None:
     month_odometer_values = [x.odometer for x in fuels if x.date.year == today.year and x.date.month == today.month]
     distance = max(month_odometer_values) - min(month_odometer_values) if len(month_odometer_values) >= 2 else 0
     cost_km = float(month_total) / distance if distance > 0 else None
+
+    st.markdown('<div class="movexa-section">Indicadores do mês</div>', unsafe_allow_html=True)
     cols = st.columns(4)
-    cols[0].metric("Gasto no mês", money(month_total))
+    cols[0].metric("Gasto total", money(month_total))
     cols[1].metric("Combustível", money(sum((Decimal(x.total_cost) for x in month_fuel), Decimal())))
     cols[2].metric("Consumo médio", f"{avg:.2f} km/L" if avg else "—")
-    cols[3].metric("Custo/km", money(cost_km) if cost_km is not None else "—")
-    st.divider()
-    if fuels:
-        df = pd.DataFrame([{"Data": x.date, "Valor": float(x.total_cost)} for x in fuels])
-        st.plotly_chart(px.line(df, x="Data", y="Valor", markers=True, title="Gastos com combustível"), use_container_width=True)
+    cols[3].metric("Custo por km", money(cost_km) if cost_km is not None else "—")
+
+    st.markdown('<div class="movexa-section">Análises</div>', unsafe_allow_html=True)
+    chart_left, chart_right = st.columns(2)
+    with chart_left:
+        if fuels:
+            df = pd.DataFrame([{"Data": x.date, "Valor": float(x.total_cost)} for x in fuels])
+            fig = px.line(df, x="Data", y="Valor", markers=True, title="Gastos com combustível")
+            fig.update_layout(margin=dict(l=10, r=10, t=50, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Ainda não há abastecimentos. Registre o primeiro para começar.")
+    with chart_right:
+        if consumptions:
+            fig = px.line(pd.DataFrame(consumptions), x="date", y="consumption", markers=True, title="Consumo ao longo do tempo")
+            fig.update_layout(margin=dict(l=10, r=10, t=50, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("O gráfico de consumo aparecerá após pelo menos dois abastecimentos com quilometragem válida.")
+
+    st.markdown('<div class="movexa-section">Ações rápidas</div>', unsafe_allow_html=True)
+    actions = st.columns(3)
+    if actions[0].button("Registrar abastecimento", use_container_width=True):
+        st.session_state.page = "Abastecimentos"
+        st.rerun()
+    if actions[1].button("Registrar manutenção", use_container_width=True):
+        st.session_state.page = "Manutenção"
+        st.rerun()
+    if actions[2].button("Registrar com IA", use_container_width=True):
+        st.session_state.page = "Registrar com IA"
+        st.rerun()
+
+    st.markdown('<div class="movexa-section">Atividade recente</div>', unsafe_allow_html=True)
+    items = [(x.date, "Abastecimento", f"{x.liters} L · {money(x.total_cost)}") for x in fuels]
+    items += [(x.date, "Manutenção", f"{x.description} · {money(x.cost)}") for x in maint]
+    items += [(x.date, "Despesa", f"{x.description} · {money(x.amount)}") for x in expenses]
+    if items:
+        recent = sorted(items, key=lambda item: item[0], reverse=True)[:5]
+        st.dataframe(pd.DataFrame([{"Data": d.strftime("%d/%m/%Y"), "Tipo": title, "Detalhe": detail} for d, title, detail in recent]), use_container_width=True, hide_index=True)
     else:
-        st.info("Ainda não há abastecimentos. Registre o primeiro para começar.")
-    if consumptions:
-        st.plotly_chart(px.line(pd.DataFrame(consumptions), x="date", y="consumption", markers=True, title="Consumo ao longo do tempo"), use_container_width=True)
+        st.info("Sua atividade recente aparecerá aqui quando você registrar a primeira movimentação.")
 
 
 def fuel_page(vehicle: Vehicle) -> None:
-    st.title("⛽ Abastecimentos")
+    st.title("Abastecimentos")
     with st.form("fuel_form"):
         c1, c2, c3 = st.columns(3)
         record_date = c1.date_input("Data", value=date.today(), max_value=date.today())
@@ -455,7 +577,7 @@ def fuel_page(vehicle: Vehicle) -> None:
 
 
 def maintenance_page(vehicle: Vehicle) -> None:
-    st.title("🔧 Manutenção")
+    st.title("Manutenção")
     categories = ["Óleo", "Filtros", "Pneus", "Freios", "Suspensão", "Motor", "Elétrica", "Revisão", "Inspeção", "Outros"]
     with st.form("maintenance_form"):
         c1, c2, c3 = st.columns(3)
@@ -493,7 +615,7 @@ def maintenance_page(vehicle: Vehicle) -> None:
 
 
 def expenses_page(vehicle: Vehicle) -> None:
-    st.title("💰 Despesas")
+    st.title("Despesas")
     categories = ["Lavagem", "Estacionamento", "Pedágio", "Seguro", "Documentação", "Acessórios", "Multa", "Outros"]
     with st.form("expense_form"):
         c1, c2, c3 = st.columns(3)
@@ -519,11 +641,11 @@ def expenses_page(vehicle: Vehicle) -> None:
 
 
 def history_page(vehicle: Vehicle) -> None:
-    st.title("📋 Histórico")
+    st.title("Histórico")
     fuels, maint, expenses = load_records(vehicle.id)
-    items = [(x.date, "⛽ Abastecimento", f"{x.liters} L · {money(x.total_cost)}", x.id, "fuel") for x in fuels]
-    items += [(x.date, "🔧 Manutenção", f"{x.description} · {money(x.cost)}", x.id, "maintenance") for x in maint]
-    items += [(x.date, "💰 Despesa", f"{x.description} · {money(x.amount)}", x.id, "expense") for x in expenses]
+    items = [(x.date, "Abastecimento", f"{x.liters} L · {money(x.total_cost)}", x.id, "fuel") for x in fuels]
+    items += [(x.date, "Manutenção", f"{x.description} · {money(x.cost)}", x.id, "maintenance") for x in maint]
+    items += [(x.date, "Despesa", f"{x.description} · {money(x.amount)}", x.id, "expense") for x in expenses]
     if not items:
         st.info("Seu histórico aparecerá aqui conforme você registrar atividades.")
         return
@@ -548,7 +670,7 @@ def history_page(vehicle: Vehicle) -> None:
 
 
 def ai_page(vehicle: Vehicle) -> None:
-    st.title("🤖 Registrar com IA")
+    st.title("Registrar com IA")
     st.caption("A IA interpreta o texto ou recibo. Nada é salvo sem sua confirmação.")
     text = st.text_area("Descreva o que aconteceu", placeholder="Abasteci hoje com 42 litros de gasolina a 6,19 e o carro estava com 72.430 km.")
     upload = st.file_uploader("Ou envie uma foto de recibo", type=["jpg", "jpeg", "png", "webp"])
@@ -580,7 +702,7 @@ def ai_page(vehicle: Vehicle) -> None:
         if st.button("Confirmar e salvar", type="primary"):
             try:
                 ok, message = save_ai_result(vehicle, data)
-            except (ValueError, InvalidOperation, SQLAlchemyError) as exc:
+            except (ValueError, InvalidOperation, SQLAlchemyError):
                 ok, message = False, "Não foi possível salvar o registro. Revise os dados."
             if ok:
                 st.session_state.pop("ai_result", None)
@@ -594,7 +716,7 @@ def ai_page(vehicle: Vehicle) -> None:
 
 
 def insights_page(vehicle: Vehicle) -> None:
-    st.title("💡 Insights")
+    st.title("Insights")
     fuels, maint, expenses = load_records(vehicle.id)
     if not fuels and not maint and not expenses:
         st.info("Registre alguns dados para receber insights reais.")
@@ -621,7 +743,7 @@ def insights_page(vehicle: Vehicle) -> None:
 
 
 def settings_page(user: User) -> None:
-    st.title("⚙️ Configurações")
+    st.title("Configurações")
     st.write(f"**Conta:** {user.email}")
     if user.plan == "trial":
         days = max(0, (user.trial_ends_at.date() - date.today()).days)
@@ -657,34 +779,40 @@ def main() -> None:
         st.session_state.clear()
         st.error("Sua sessão não está mais ativa.")
         st.rerun()
+
+    # Minimal sidebar: navigation and session only. Theme switching stays in
+    # Streamlit's native settings menu and is not overridden by the app.
     with st.sidebar:
-        st.markdown("# 🚗 Meu Carro")
+        st.logo("assets/movexa_logo.svg", size="medium")
         st.caption(user.email)
         st.caption(f"Trial: {max(0, (user.trial_ends_at.date() - date.today()).days)} dias restantes" if user.plan == "trial" else "Plano: Free")
-        if st.button("Sair"):
+        st.divider()
+        page = st.radio("Navegação", ["Início", "Abastecimentos", "Manutenção", "Despesas", "Histórico", "Registrar com IA", "Insights", "Configurações"], index=["Início", "Abastecimentos", "Manutenção", "Despesas", "Histórico", "Registrar com IA", "Insights", "Configurações"].index(st.session_state.get("page", "Início")))
+        st.session_state.page = page
+        st.divider()
+        if st.button("Sair", use_container_width=True):
             st.session_state.clear()
             st.rerun()
+
     vehicle = vehicle_for(user.id)
     if not vehicle:
-        st.title("Vamos começar")
-        st.write("Cadastre seu veículo para usar o Meu Carro.")
+        st.markdown('<div class="movexa-hero"><div class="movexa-kicker">Primeiro passo</div><h1>Configure seu veículo.</h1><p>Cadastre os dados básicos para começar a acompanhar sua operação.</p></div>', unsafe_allow_html=True)
         vehicle_form(user)
         return
-    with st.sidebar:
-        page = st.radio("Menu", ["🏠 Início", "⛽ Abastecimentos", "🔧 Manutenção", "💰 Despesas", "📋 Histórico", "🤖 Registrar com IA", "💡 Insights", "⚙️ Configurações"])
-    if page == "🏠 Início":
+
+    if page == "Início":
         home_page(vehicle)
-    elif page == "⛽ Abastecimentos":
+    elif page == "Abastecimentos":
         fuel_page(vehicle)
-    elif page == "🔧 Manutenção":
+    elif page == "Manutenção":
         maintenance_page(vehicle)
-    elif page == "💰 Despesas":
+    elif page == "Despesas":
         expenses_page(vehicle)
-    elif page == "📋 Histórico":
+    elif page == "Histórico":
         history_page(vehicle)
-    elif page == "🤖 Registrar com IA":
+    elif page == "Registrar com IA":
         ai_page(vehicle)
-    elif page == "💡 Insights":
+    elif page == "Insights":
         insights_page(vehicle)
     else:
         settings_page(user)
