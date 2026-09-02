@@ -19,6 +19,60 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 st.set_page_config(page_title="Meu Carro", page_icon="🚗", layout="wide", initial_sidebar_state="expanded")
 
+# -----------------------------------------------------------------------------
+# Premium UI
+# -----------------------------------------------------------------------------
+
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .stApp { background: #0b0d10; }
+    [data-testid="stHeader"] { background: rgba(11,13,16,.88); }
+    [data-testid="stSidebar"] { background: #101318; border-right: 1px solid #20242b; }
+    [data-testid="stSidebar"] > div:first-child { padding-top: 1.5rem; }
+    .block-container { max-width: 1420px; padding-top: 2.2rem; padding-bottom: 4rem; }
+
+    .brand { display:flex; align-items:center; gap:.75rem; margin-bottom:1.8rem; }
+    .brand-mark { width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:#f5c542; color:#111; font-size:22px; box-shadow:0 8px 28px rgba(245,197,66,.16); }
+    .brand-title { font-size:1.15rem; font-weight:800; letter-spacing:-.03em; color:#f4f5f7; }
+    .brand-sub { color:#7f8793; font-size:.72rem; margin-top:1px; }
+
+    .hero { padding: 1.65rem 1.8rem; border:1px solid #242932; border-radius:20px; background:linear-gradient(135deg,#151920,#0f1217); margin-bottom:1.2rem; }
+    .eyebrow { color:#aab1bc; font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.13em; }
+    .hero h1 { margin:.35rem 0 .35rem; color:#fff; font-size:2.15rem; line-height:1.1; letter-spacing:-.055em; }
+    .hero p { color:#8f98a6; margin:0; font-size:.92rem; }
+
+    .kpi { border:1px solid #242932; background:#12161c; border-radius:16px; padding:1rem 1.1rem; min-height:112px; }
+    .kpi-label { color:#7f8793; font-size:.74rem; text-transform:uppercase; letter-spacing:.08em; font-weight:700; }
+    .kpi-value { color:#f4f5f7; font-size:1.55rem; font-weight:800; letter-spacing:-.04em; margin-top:.35rem; }
+    .kpi-note { color:#69727e; font-size:.72rem; margin-top:.3rem; }
+
+    .section-title { color:#f1f3f5; font-size:1.05rem; font-weight:750; letter-spacing:-.025em; margin:.2rem 0 .8rem; }
+    .muted { color:#7f8793; }
+    .status { display:inline-flex; padding:.28rem .55rem; border-radius:999px; background:#1c222b; color:#b9c0ca; font-size:.7rem; font-weight:700; }
+    .status.good { background:#15261e; color:#78d69c; }
+    .status.warn { background:#292316; color:#e4bb63; }
+
+    div[data-testid="stMetric"] { background:#12161c; border:1px solid #242932; padding:1rem; border-radius:16px; }
+    div[data-testid="stMetricLabel"] { color:#7f8793; }
+    div[data-testid="stMetricValue"] { color:#f4f5f7; }
+    .stButton > button { border-radius:10px; font-weight:650; min-height:2.45rem; }
+    .stButton > button[kind="primary"] { background:#f5c542; border-color:#f5c542; color:#111; }
+    .stButton > button[kind="secondary"] { background:#171b21; border-color:#2b313a; color:#e8eaed; }
+    div[data-baseweb="input"] > div, div[data-baseweb="select"] > div, textarea { background:#12161c !important; border-color:#2a3039 !important; border-radius:10px !important; }
+    .stTabs [data-baseweb="tab-list"] { gap:.25rem; }
+    .stTabs [data-baseweb="tab"] { color:#818a97; }
+    .stTabs [aria-selected="true"] { color:#f5c542 !important; }
+    [data-testid="stDataFrame"] { border:1px solid #242932; border-radius:14px; overflow:hidden; }
+    hr { border-color:#242932; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def secret(name: str, default: str = "") -> str:
     value = os.getenv(name)
@@ -31,7 +85,6 @@ def secret(name: str, default: str = "") -> str:
 
 
 def normalize_database_url(url: str) -> str:
-    # psycopg v3 is installed; make PostgreSQL URLs explicit for SQLAlchemy.
     if url.startswith("postgres://"):
         return "postgresql+psycopg://" + url[len("postgres://") :]
     if url.startswith("postgresql://"):
@@ -42,7 +95,6 @@ def normalize_database_url(url: str) -> str:
 DATABASE_URL = normalize_database_url(secret("DATABASE_URL", "sqlite:///meu_carro.db"))
 GEMINI_API_KEY = secret("GEMINI_API_KEY")
 GEMINI_MODEL = secret("GEMINI_MODEL", "gemini-2.5-flash")
-
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
@@ -133,14 +185,10 @@ class Feedback(Base):
 
 try:
     Base.metadata.create_all(engine)
-except SQLAlchemyError as exc:
-    st.error("Não foi possível conectar ao banco de dados. Verifique DATABASE_URL e as credenciais do banco.")
+except SQLAlchemyError:
+    st.error("Não foi possível conectar ao banco. Verifique DATABASE_URL e as credenciais.")
     st.stop()
 
-
-# -----------------------------------------------------------------------------
-# Helpers
-# -----------------------------------------------------------------------------
 
 def money(value: object) -> str:
     try:
@@ -148,6 +196,10 @@ def money(value: object) -> str:
     except (InvalidOperation, ValueError, TypeError):
         amount = Decimal("0")
     return f"R$ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def fmt_km(value: int) -> str:
+    return f"{int(value):,}".replace(",", ".") + " km"
 
 
 def hash_password(password: str) -> str:
@@ -179,10 +231,14 @@ def register_user(email: str, password: str) -> tuple[bool, str]:
     with SessionLocal() as db:
         if db.query(User).filter(User.email == email).first():
             return False, "Este e-mail já está cadastrado."
-        for _ in range(5):
-            code = secrets.token_hex(5).upper()
-            if not db.query(User).filter(User.referral_code == code).first():
+        code = None
+        for _ in range(10):
+            candidate = secrets.token_hex(5).upper()
+            if not db.query(User).filter(User.referral_code == candidate).first():
+                code = candidate
                 break
+        if not code:
+            return False, "Não foi possível gerar seu código de convite."
         user = User(email=email, password_hash=hash_password(password), trial_started_at=now, trial_ends_at=now + timedelta(days=30), referral_code=code)
         db.add(user)
         try:
@@ -237,27 +293,12 @@ def load_records(vehicle_id: int):
 
 
 def consumption_rows(fuels: list[FuelRecord]) -> list[dict]:
-    rows = []
-    previous = None
+    rows, previous = [], None
     for fuel in fuels:
         if previous and fuel.odometer > previous.odometer and fuel.liters > 0:
             rows.append({"date": fuel.date, "consumption": round((fuel.odometer - previous.odometer) / float(fuel.liters), 2)})
         previous = fuel
     return rows
-
-
-def parse_ai_json(text: str) -> Optional[dict]:
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        lines = cleaned.splitlines()
-        cleaned = "\n".join(lines[1:])
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3].strip()
-    try:
-        value = json.loads(cleaned)
-        return value if isinstance(value, dict) else None
-    except json.JSONDecodeError:
-        return None
 
 
 def ai_request(prompt: str, image_bytes: Optional[bytes] = None, mime_type: str = "image/jpeg") -> Optional[str]:
@@ -279,415 +320,305 @@ def ai_request(prompt: str, image_bytes: Optional[bytes] = None, mime_type: str 
         return None
 
 
+def parse_ai_json(text: str) -> Optional[dict]:
+    try:
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.splitlines()[1:]).removesuffix("```").strip()
+        value = json.loads(cleaned)
+        return value if isinstance(value, dict) else None
+    except (json.JSONDecodeError, AttributeError):
+        return None
+
+
 def save_ai_result(vehicle: Vehicle, data: dict) -> tuple[bool, str]:
     kind = str(data.get("type", "")).lower().strip()
     try:
-        record_date = date.fromisoformat(str(data["date"])) if data.get("date") else date.today()
+        record_date = date.fromisoformat(str(data.get("date"))) if data.get("date") else date.today()
+        odo_raw = data.get("odometer")
+        odometer = int(float(odo_raw)) if odo_raw not in (None, "") else vehicle.current_odometer
     except (ValueError, TypeError):
-        record_date = date.today()
-    odo_raw = data.get("odometer")
-    odometer = int(float(odo_raw)) if odo_raw not in (None, "") else vehicle.current_odometer
+        return False, "A IA retornou dados inválidos. Revise a imagem e tente novamente."
     if odometer < max_odometer(vehicle.id):
-        return False, "A quilometragem informada pela IA é menor que um registro existente. Revise antes de salvar."
-
+        return False, "A quilometragem informada é menor que um registro existente."
     with SessionLocal() as db:
         if kind == "fuel":
-            if data.get("liters") in (None, "") or data.get("price_per_liter") in (None, ""):
-                return False, "Para abastecimento, litros e preço por litro são obrigatórios."
-            liters = Decimal(str(data["liters"]))
-            price = Decimal(str(data["price_per_liter"]))
-            if liters <= 0 or price <= 0:
-                return False, "Litros e preço por litro devem ser maiores que zero."
+            liters = Decimal(str(data.get("liters") or "0")); price = Decimal(str(data.get("price_per_liter") or "0"))
+            if liters <= 0 or price <= 0: return False, "Litros e preço por litro devem ser maiores que zero."
             obj = FuelRecord(vehicle_id=vehicle.id, date=record_date, odometer=odometer, liters=liters, price_per_liter=price, total_cost=liters * price, fuel_type=str(data.get("fuel_type") or vehicle.fuel_type)[:30], station=str(data.get("station") or "")[:120] or None)
         elif kind == "maintenance":
-            description = str(data.get("description") or "").strip()
-            cost = Decimal(str(data.get("cost") or "0"))
-            if not description or cost <= 0:
-                return False, "Manutenção precisa de descrição e custo válido."
-            obj = MaintenanceRecord(vehicle_id=vehicle.id, date=record_date, odometer=odometer, category=str(data.get("category") or "Outros")[:50], description=description[:255], workshop=str(data.get("workshop") or "")[:120] or None, cost=cost)
+            desc = str(data.get("description") or "").strip(); cost = Decimal(str(data.get("cost") or "0"))
+            if not desc or cost <= 0: return False, "Manutenção precisa de descrição e custo válido."
+            obj = MaintenanceRecord(vehicle_id=vehicle.id, date=record_date, odometer=odometer, category=str(data.get("category") or "Outros")[:50], description=desc[:255], workshop=str(data.get("workshop") or "")[:120] or None, cost=cost)
         elif kind == "expense":
-            description = str(data.get("description") or "").strip()
-            amount = Decimal(str(data.get("cost") or "0"))
-            if not description or amount <= 0:
-                return False, "Despesa precisa de descrição e valor válido."
-            obj = ExpenseRecord(vehicle_id=vehicle.id, date=record_date, category=str(data.get("category") or "Outros")[:50], description=description[:255], amount=amount)
+            desc = str(data.get("description") or "").strip(); amount = Decimal(str(data.get("cost") or "0"))
+            if not desc or amount <= 0: return False, "Despesa precisa de descrição e valor válido."
+            obj = ExpenseRecord(vehicle_id=vehicle.id, date=record_date, category=str(data.get("category") or "Outros")[:50], description=desc[:255], amount=amount)
         else:
             return False, "Tipo de registro retornado pela IA é inválido."
         db.add(obj)
+        current = db.get(Vehicle, vehicle.id)
+        if current and odometer > current.current_odometer: current.current_odometer = odometer
         db.commit()
-        if odometer > vehicle.current_odometer:
-            current = db.get(Vehicle, vehicle.id)
-            if current:
-                current.current_odometer = odometer
-                db.commit()
     return True, "Registro salvo com sucesso."
 
 
-# -----------------------------------------------------------------------------
-# Pages
-# -----------------------------------------------------------------------------
+def page_header(eyebrow: str, title: str, description: str = "") -> None:
+    st.markdown(f'<div class="hero"><div class="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>', unsafe_allow_html=True)
+
+
+def kpi(label: str, value: str, note: str = "") -> None:
+    st.markdown(f'<div class="kpi"><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div><div class="kpi-note">{note}</div></div>', unsafe_allow_html=True)
+
 
 def auth_page() -> None:
-    st.title("🚗 Meu Carro")
-    st.caption("Controle combustível, manutenção e despesas do seu veículo.")
-    login_tab, register_tab = st.tabs(["Entrar", "Criar conta"])
-    with login_tab:
-        with st.form("login_form"):
-            email = st.text_input("E-mail")
-            password = st.text_input("Senha", type="password")
-            if st.form_submit_button("Entrar", type="primary"):
-                ok, message = login_user(email, password)
-                (st.success if ok else st.error)(message)
-                if ok:
-                    st.rerun()
-    with register_tab:
-        with st.form("register_form"):
-            email = st.text_input("E-mail", key="register_email")
-            password = st.text_input("Senha", type="password", key="register_password")
-            confirm = st.text_input("Confirmar senha", type="password")
-            if st.form_submit_button("Criar conta", type="primary"):
-                if password != confirm:
-                    st.error("As senhas não coincidem.")
-                else:
-                    ok, message = register_user(email, password)
+    left, right = st.columns([1.15, .85], gap="large")
+    with left:
+        st.markdown('<div style="margin-top:7vh">', unsafe_allow_html=True)
+        st.markdown('<div class="eyebrow">GESTÃO INTELIGENTE</div><h1 style="font-size:3.3rem;letter-spacing:-.07em;margin:.3rem 0">Seu carro.<br>Sem planilhas.</h1><p class="muted" style="font-size:1rem;max-width:520px">Abastecimentos, manutenção, despesas e indicadores em um só lugar.</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    with right:
+        st.markdown('<div class="hero" style="margin-top:5vh">', unsafe_allow_html=True)
+        st.markdown('<div class="brand"><div class="brand-mark">🚗</div><div><div class="brand-title">Meu Carro</div><div class="brand-sub">Personal vehicle intelligence</div></div></div>', unsafe_allow_html=True)
+        login_tab, register_tab = st.tabs(["Entrar", "Criar conta"])
+        with login_tab:
+            with st.form("login_form"):
+                email = st.text_input("E-mail")
+                password = st.text_input("Senha", type="password")
+                if st.form_submit_button("Entrar", type="primary", use_container_width=True):
+                    ok, message = login_user(email, password)
                     (st.success if ok else st.error)(message)
-                    if ok:
-                        st.rerun()
+                    if ok: st.rerun()
+        with register_tab:
+            with st.form("register_form"):
+                email = st.text_input("E-mail", key="register_email")
+                password = st.text_input("Senha", type="password", key="register_password")
+                confirm = st.text_input("Confirmar senha", type="password")
+                if st.form_submit_button("Começar grátis", type="primary", use_container_width=True):
+                    if password != confirm: st.error("As senhas não coincidem.")
+                    else:
+                        ok, message = register_user(email, password)
+                        (st.success if ok else st.error)(message)
+                        if ok: st.rerun()
+        st.caption("30 dias grátis · Sem cartão de crédito")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def vehicle_form(user: User) -> None:
-    existing = vehicle_for(user.id)
-    fuels = ["Gasolina", "Etanol", "Diesel", "Flex", "GNV", "Elétrico"]
+    existing = vehicle_for(user.id); fuels = ["Gasolina", "Etanol", "Diesel", "Flex", "GNV", "Elétrico"]
     with st.form("vehicle_form"):
-        c1, c2 = st.columns(2)
-        brand = c1.text_input("Marca", value=existing.brand if existing else "")
-        model = c2.text_input("Modelo", value=existing.model if existing else "")
-        c1, c2, c3 = st.columns(3)
-        current_year = date.today().year
-        year = c1.number_input("Ano", min_value=1950, max_value=current_year + 1, value=existing.year if existing else current_year, step=1)
-        current_fuel = existing.fuel_type if existing else "Gasolina"
-        fuel = c2.selectbox("Combustível", fuels, index=fuels.index(current_fuel) if current_fuel in fuels else 0)
-        odo = c3.number_input("Quilometragem atual", min_value=0, value=existing.current_odometer if existing else 0, step=1)
-        version = st.text_input("Versão (opcional)", value=(existing.version or "") if existing else "")
-        plate = st.text_input("Placa (opcional)", value=(existing.license_plate or "") if existing else "")
+        c1, c2 = st.columns(2); brand = c1.text_input("Marca", value=existing.brand if existing else ""); model = c2.text_input("Modelo", value=existing.model if existing else "")
+        c1, c2, c3 = st.columns(3); current_year = date.today().year
+        year = c1.number_input("Ano", 1950, current_year + 1, existing.year if existing else current_year, 1)
+        current_fuel = existing.fuel_type if existing else "Gasolina"; fuel = c2.selectbox("Combustível", fuels, index=fuels.index(current_fuel) if current_fuel in fuels else 0)
+        odo = c3.number_input("Quilometragem atual", 0, value=existing.current_odometer if existing else 0, step=1)
+        version = st.text_input("Versão", value=(existing.version or "") if existing else ""); plate = st.text_input("Placa", value=(existing.license_plate or "") if existing else "")
         if st.form_submit_button("Salvar veículo", type="primary"):
-            if not brand.strip() or not model.strip():
-                st.error("Informe marca e modelo.")
-                return
-            if existing and int(odo) < max_odometer(existing.id):
-                st.error("A quilometragem não pode ser menor que um registro existente.")
-                return
+            if not brand.strip() or not model.strip(): st.error("Informe marca e modelo."); return
+            if existing and int(odo) < max_odometer(existing.id): st.error("A quilometragem não pode diminuir."); return
             with SessionLocal() as db:
                 vehicle = db.get(Vehicle, existing.id) if existing else Vehicle(user_id=user.id)
-                if vehicle is None or (existing and vehicle.user_id != user.id):
-                    st.error("Veículo não encontrado.")
-                    return
                 vehicle.brand, vehicle.model, vehicle.year, vehicle.fuel_type = brand.strip(), model.strip(), int(year), fuel
-                vehicle.current_odometer = int(odo)
-                vehicle.version = version.strip() or None
-                vehicle.license_plate = plate.strip().upper() or None
-                db.add(vehicle)
-                db.commit()
-            st.success("Veículo salvo.")
-            st.rerun()
+                vehicle.current_odometer, vehicle.version, vehicle.license_plate = int(odo), version.strip() or None, plate.strip().upper() or None
+                db.add(vehicle); db.commit()
+            st.success("Veículo salvo."); st.rerun()
 
 
 def home_page(vehicle: Vehicle) -> None:
-    st.title("Início")
-    st.caption(f"{vehicle.brand} {vehicle.model} · {vehicle.year} · {vehicle.current_odometer:,} km".replace(",", "."))
-    fuels, maint, expenses = load_records(vehicle.id)
-    today = date.today()
+    fuels, maint, expenses = load_records(vehicle.id); today = date.today()
     month_fuel = [x for x in fuels if x.date.year == today.year and x.date.month == today.month]
     month_maint = [x for x in maint if x.date.year == today.year and x.date.month == today.month]
     month_exp = [x for x in expenses if x.date.year == today.year and x.date.month == today.month]
-    month_total = sum((Decimal(x.total_cost) for x in month_fuel), Decimal()) + sum((Decimal(x.cost) for x in month_maint), Decimal()) + sum((Decimal(x.amount) for x in month_exp), Decimal())
-    consumptions = consumption_rows(fuels)
-    recent_consumptions = consumptions[-10:]
-    avg = sum(x["consumption"] for x in recent_consumptions) / len(recent_consumptions) if recent_consumptions else None
-    month_odometer_values = [x.odometer for x in fuels if x.date.year == today.year and x.date.month == today.month]
-    distance = max(month_odometer_values) - min(month_odometer_values) if len(month_odometer_values) >= 2 else 0
-    cost_km = float(month_total) / distance if distance > 0 else None
+    fuel_total = sum((Decimal(x.total_cost) for x in month_fuel), Decimal()); maint_total = sum((Decimal(x.cost) for x in month_maint), Decimal()); exp_total = sum((Decimal(x.amount) for x in month_exp), Decimal()); total = fuel_total + maint_total + exp_total
+    cons = consumption_rows(fuels); avg = sum(x["consumption"] for x in cons[-10:]) / len(cons[-10:]) if cons else None
+    page_header("VISÃO GERAL", f"Olá, {vehicle.brand} {vehicle.model}", f"{vehicle.year} · {fmt_km(vehicle.current_odometer)} · {vehicle.fuel_type}")
     cols = st.columns(4)
-    cols[0].metric("Gasto no mês", money(month_total))
-    cols[1].metric("Combustível", money(sum((Decimal(x.total_cost) for x in month_fuel), Decimal())))
-    cols[2].metric("Consumo médio", f"{avg:.2f} km/L" if avg else "—")
-    cols[3].metric("Custo/km", money(cost_km) if cost_km is not None else "—")
-    st.divider()
-    if fuels:
-        df = pd.DataFrame([{"Data": x.date, "Valor": float(x.total_cost)} for x in fuels])
-        st.plotly_chart(px.line(df, x="Data", y="Valor", markers=True, title="Gastos com combustível"), use_container_width=True)
-    else:
-        st.info("Ainda não há abastecimentos. Registre o primeiro para começar.")
-    if consumptions:
-        st.plotly_chart(px.line(pd.DataFrame(consumptions), x="date", y="consumption", markers=True, title="Consumo ao longo do tempo"), use_container_width=True)
+    with cols[0]: kpi("Gasto este mês", money(total), "combustível + manutenção + despesas")
+    with cols[1]: kpi("Combustível", money(fuel_total), f"{len(month_fuel)} abastecimento(s)")
+    with cols[2]: kpi("Consumo médio", f"{avg:.1f} km/L" if avg else "—", "últimos abastecimentos")
+    with cols[3]: kpi("Registros", str(len(fuels) + len(maint) + len(expenses)), "histórico total")
+    st.write("")
+    left, right = st.columns([1.6, 1], gap="large")
+    with left:
+        st.markdown('<div class="section-title">Evolução dos gastos</div>', unsafe_allow_html=True)
+        rows = []
+        for x in fuels: rows.append({"Data": x.date, "Categoria": "Combustível", "Valor": float(x.total_cost)})
+        for x in maint: rows.append({"Data": x.date, "Categoria": "Manutenção", "Valor": float(x.cost)})
+        for x in expenses: rows.append({"Data": x.date, "Categoria": "Despesas", "Valor": float(x.amount)})
+        if rows:
+            df = pd.DataFrame(rows).sort_values("Data"); chart = px.area(df, x="Data", y="Valor", color="Categoria")
+            chart.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=0,r=0,t=10,b=0), legend_title=None, height=320)
+            st.plotly_chart(chart, use_container_width=True, config={"displayModeBar": False})
+        else: st.info("Comece registrando seu primeiro abastecimento.")
+    with right:
+        st.markdown('<div class="section-title">Resumo do veículo</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="kpi"><div class="kpi-label">Quilometragem</div><div class="kpi-value">{fmt_km(vehicle.current_odometer)}</div><div class="kpi-note">odômetro atual</div></div>', unsafe_allow_html=True)
+        st.write("")
+        st.markdown(f'<div class="kpi"><div class="kpi-label">Manutenção no mês</div><div class="kpi-value">{money(maint_total)}</div><div class="kpi-note">{len(month_maint)} serviço(s) registrado(s)</div></div>', unsafe_allow_html=True)
+    if cons:
+        st.write(""); st.markdown('<div class="section-title">Consumo</div>', unsafe_allow_html=True)
+        chart = px.line(pd.DataFrame(cons), x="date", y="consumption", markers=True); chart.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=0,r=0,t=10,b=0), height=270, yaxis_title="km/L", xaxis_title=None)
+        st.plotly_chart(chart, use_container_width=True, config={"displayModeBar": False})
 
 
 def fuel_page(vehicle: Vehicle) -> None:
-    st.title("⛽ Abastecimentos")
-    with st.form("fuel_form"):
-        c1, c2, c3 = st.columns(3)
-        record_date = c1.date_input("Data", value=date.today(), max_value=date.today())
-        odometer = c2.number_input("Quilometragem", min_value=0, value=vehicle.current_odometer, step=1)
-        liters = c3.number_input("Litros", min_value=0.001, value=1.0, step=0.1)
-        c1, c2, c3 = st.columns(3)
-        price = c1.number_input("Preço por litro", min_value=0.001, value=1.0, step=0.01)
-        fuel_type = c2.selectbox("Combustível", ["Gasolina", "Etanol", "Diesel", "Flex", "GNV"])
-        station = c3.text_input("Posto (opcional)")
-        notes = st.text_area("Observações")
-        if st.form_submit_button("Registrar abastecimento", type="primary"):
-            if int(odometer) < max_odometer(vehicle.id):
-                st.error("A quilometragem não pode ser menor que um registro existente.")
-                return
-            total = Decimal(str(liters)) * Decimal(str(price))
-            with SessionLocal() as db:
-                db.add(FuelRecord(vehicle_id=vehicle.id, date=record_date, odometer=int(odometer), liters=Decimal(str(liters)), price_per_liter=Decimal(str(price)), total_cost=total, fuel_type=fuel_type, station=station.strip()[:120] or None, notes=notes.strip() or None))
-                current = db.get(Vehicle, vehicle.id)
-                if current and int(odometer) > current.current_odometer:
-                    current.current_odometer = int(odometer)
-                db.commit()
-            st.success(f"Abastecimento registrado: {money(total)}")
-            st.rerun()
-    fuels, _, _ = load_records(vehicle.id)
+    page_header("COMBUSTÍVEL", "Abastecimentos", "Registre cada parada e acompanhe o custo real do seu carro.")
+    with st.expander("＋ Registrar abastecimento", expanded=True):
+        with st.form("fuel_form"):
+            c1,c2,c3=st.columns(3); record_date=c1.date_input("Data", value=date.today(), max_value=date.today()); odo=c2.number_input("Quilometragem",0,value=vehicle.current_odometer,step=1); liters=c3.number_input("Litros",0.001,value=1.0,step=.1)
+            c1,c2,c3=st.columns(3); price=c1.number_input("Preço por litro",.001,value=1.0,step=.01); fuel_type=c2.selectbox("Combustível",["Gasolina","Etanol","Diesel","Flex","GNV"]); station=c3.text_input("Posto")
+            notes=st.text_area("Observações")
+            if st.form_submit_button("Registrar", type="primary"):
+                if int(odo)<max_odometer(vehicle.id): st.error("A quilometragem não pode ser menor que um registro existente."); return
+                total=Decimal(str(liters))*Decimal(str(price))
+                with SessionLocal() as db:
+                    db.add(FuelRecord(vehicle_id=vehicle.id,date=record_date,odometer=int(odo),liters=Decimal(str(liters)),price_per_liter=Decimal(str(price)),total_cost=total,fuel_type=fuel_type,station=station.strip()[:120] or None,notes=notes.strip() or None)); current=db.get(Vehicle,vehicle.id)
+                    if current and int(odo)>current.current_odometer: current.current_odometer=int(odo)
+                    db.commit()
+                st.success(f"Abastecimento registrado · {money(total)}"); st.rerun()
+    fuels,_,_=load_records(vehicle.id)
     if fuels:
-        st.dataframe(pd.DataFrame([{"Data": x.date.strftime("%d/%m/%Y"), "Km": x.odometer, "Litros": float(x.liters), "R$/L": money(x.price_per_liter), "Total": money(x.total_cost), "Combustível": x.fuel_type, "Posto": x.station or "—"} for x in reversed(fuels)]), use_container_width=True, hide_index=True)
-    else:
-        st.info("Nenhum abastecimento registrado ainda.")
+        df=pd.DataFrame([{"Data":x.date.strftime("%d/%m/%Y"),"Km":x.odometer,"Litros":float(x.liters),"R$/L":money(x.price_per_liter),"Total":money(x.total_cost),"Combustível":x.fuel_type,"Posto":x.station or "—"} for x in reversed(fuels)])
+        st.dataframe(df,use_container_width=True,hide_index=True)
+    else: st.info("Nenhum abastecimento registrado.")
 
 
 def maintenance_page(vehicle: Vehicle) -> None:
-    st.title("🔧 Manutenção")
-    categories = ["Óleo", "Filtros", "Pneus", "Freios", "Suspensão", "Motor", "Elétrica", "Revisão", "Inspeção", "Outros"]
-    with st.form("maintenance_form"):
-        c1, c2, c3 = st.columns(3)
-        record_date = c1.date_input("Data", value=date.today(), max_value=date.today())
-        odometer = c2.number_input("Quilometragem", min_value=0, value=vehicle.current_odometer, step=1)
-        category = c3.selectbox("Categoria", categories)
-        description = st.text_input("Descrição")
-        c1, c2 = st.columns(2)
-        workshop = c1.text_input("Oficina (opcional)")
-        cost = c2.number_input("Custo", min_value=0.01, value=1.0, step=10.0)
-        c1, c2 = st.columns(2)
-        next_odo = c1.number_input("Próxima revisão em km (opcional)", min_value=0, value=0, step=1)
-        has_next_date = c2.checkbox("Definir próxima data")
-        next_date = c2.date_input("Próxima data", value=date.today(), min_value=date.today(), disabled=not has_next_date)
-        notes = st.text_area("Observações")
-        if st.form_submit_button("Registrar manutenção", type="primary"):
-            if not description.strip():
-                st.error("Informe a descrição.")
-            elif int(odometer) < max_odometer(vehicle.id):
-                st.error("A quilometragem não pode regredir.")
-            else:
+    page_header("CUIDADO", "Manutenção", "Mantenha o histórico do carro organizado e saiba quanto está investindo.")
+    categories=["Óleo","Filtros","Pneus","Freios","Suspensão","Motor","Elétrica","Revisão","Inspeção","Outros"]
+    with st.expander("＋ Registrar manutenção", expanded=True):
+        with st.form("maintenance_form"):
+            c1,c2,c3=st.columns(3); record_date=c1.date_input("Data",value=date.today(),max_value=date.today()); odo=c2.number_input("Quilometragem",0,value=vehicle.current_odometer,step=1); category=c3.selectbox("Categoria",categories)
+            desc=st.text_input("Descrição"); c1,c2=st.columns(2); workshop=c1.text_input("Oficina"); cost=c2.number_input("Custo",0.0,step=10.0); next_odo=c1.number_input("Próxima revisão (km)",0, value=0, step=100)
+            notes=st.text_area("Observações")
+            if st.form_submit_button("Registrar",type="primary"):
+                if not desc.strip() or cost<=0: st.error("Informe descrição e custo."); return
+                if int(odo)<max_odometer(vehicle.id): st.error("A quilometragem não pode diminuir."); return
                 with SessionLocal() as db:
-                    db.add(MaintenanceRecord(vehicle_id=vehicle.id, date=record_date, odometer=int(odometer), category=category, description=description.strip(), workshop=workshop.strip()[:120] or None, cost=Decimal(str(cost)), next_due_odometer=int(next_odo) if next_odo else None, next_due_date=next_date if has_next_date else None, notes=notes.strip() or None))
-                    current = db.get(Vehicle, vehicle.id)
-                    if current and int(odometer) > current.current_odometer:
-                        current.current_odometer = int(odometer)
+                    db.add(MaintenanceRecord(vehicle_id=vehicle.id,date=record_date,odometer=int(odo),category=category,description=desc.strip()[:255],workshop=workshop.strip()[:120] or None,cost=Decimal(str(cost)),next_due_odometer=int(next_odo) if next_odo else None,notes=notes.strip() or None)); current=db.get(Vehicle,vehicle.id)
+                    if current and int(odo)>current.current_odometer: current.current_odometer=int(odo)
                     db.commit()
-                st.success("Manutenção registrada.")
-                st.rerun()
-    _, records, _ = load_records(vehicle.id)
-    if records:
-        st.dataframe(pd.DataFrame([{"Data": x.date.strftime("%d/%m/%Y"), "Km": x.odometer, "Categoria": x.category, "Descrição": x.description, "Custo": money(x.cost), "Próxima": f"{x.next_due_odometer:,} km" if x.next_due_odometer else (x.next_due_date.strftime("%d/%m/%Y") if x.next_due_date else "—")} for x in reversed(records)]), use_container_width=True, hide_index=True)
-    else:
-        st.info("Nenhuma manutenção registrada ainda.")
+                st.success("Manutenção registrada."); st.rerun()
+    _,maint,_=load_records(vehicle.id)
+    if maint: st.dataframe(pd.DataFrame([{"Data":x.date.strftime("%d/%m/%Y"),"Km":x.odometer,"Categoria":x.category,"Serviço":x.description,"Oficina":x.workshop or "—","Custo":money(x.cost),"Próxima":fmt_km(x.next_due_odometer) if x.next_due_odometer else "—"} for x in reversed(maint)]),use_container_width=True,hide_index=True)
+    else: st.info("Nenhuma manutenção registrada.")
 
 
 def expenses_page(vehicle: Vehicle) -> None:
-    st.title("💰 Despesas")
-    categories = ["Lavagem", "Estacionamento", "Pedágio", "Seguro", "Documentação", "Acessórios", "Multa", "Outros"]
-    with st.form("expense_form"):
-        c1, c2, c3 = st.columns(3)
-        record_date = c1.date_input("Data", value=date.today(), max_value=date.today())
-        category = c2.selectbox("Categoria", categories)
-        amount = c3.number_input("Valor", min_value=0.01, value=1.0, step=5.0)
-        description = st.text_input("Descrição")
-        notes = st.text_area("Observações")
-        if st.form_submit_button("Registrar despesa", type="primary"):
-            if not description.strip():
-                st.error("Informe a descrição.")
-                return
-            with SessionLocal() as db:
-                db.add(ExpenseRecord(vehicle_id=vehicle.id, date=record_date, category=category, description=description.strip(), amount=Decimal(str(amount)), notes=notes.strip() or None))
-                db.commit()
-            st.success("Despesa registrada.")
-            st.rerun()
-    _, _, records = load_records(vehicle.id)
-    if records:
-        st.dataframe(pd.DataFrame([{"Data": x.date.strftime("%d/%m/%Y"), "Categoria": x.category, "Descrição": x.description, "Valor": money(x.amount)} for x in reversed(records)]), use_container_width=True, hide_index=True)
-    else:
-        st.info("Nenhuma despesa registrada ainda.")
+    page_header("FINANCEIRO", "Despesas", "Tudo que sai do bolso para manter seu carro rodando.")
+    cats=["Seguro","IPVA","Estacionamento","Pedágio","Lavagem","Multa","Documentação","Outros"]
+    with st.expander("＋ Registrar despesa", expanded=True):
+        with st.form("expense_form"):
+            c1,c2=st.columns(2); record_date=c1.date_input("Data",value=date.today(),max_value=date.today()); category=c2.selectbox("Categoria",cats); desc=st.text_input("Descrição"); amount=st.number_input("Valor",0.0,step=10.0); notes=st.text_area("Observações")
+            if st.form_submit_button("Registrar",type="primary"):
+                if not desc.strip() or amount<=0: st.error("Informe descrição e valor."); return
+                with SessionLocal() as db: db.add(ExpenseRecord(vehicle_id=vehicle.id,date=record_date,category=category,description=desc.strip()[:255],amount=Decimal(str(amount)),notes=notes.strip() or None)); db.commit()
+                st.success("Despesa registrada."); st.rerun()
+    _,_,expenses=load_records(vehicle.id)
+    if expenses: st.dataframe(pd.DataFrame([{"Data":x.date.strftime("%d/%m/%Y"),"Categoria":x.category,"Descrição":x.description,"Valor":money(x.amount)} for x in reversed(expenses)]),use_container_width=True,hide_index=True)
+    else: st.info("Nenhuma despesa registrada.")
 
 
 def history_page(vehicle: Vehicle) -> None:
-    st.title("📋 Histórico")
-    fuels, maint, expenses = load_records(vehicle.id)
-    items = [(x.date, "⛽ Abastecimento", f"{x.liters} L · {money(x.total_cost)}", x.id, "fuel") for x in fuels]
-    items += [(x.date, "🔧 Manutenção", f"{x.description} · {money(x.cost)}", x.id, "maintenance") for x in maint]
-    items += [(x.date, "💰 Despesa", f"{x.description} · {money(x.amount)}", x.id, "expense") for x in expenses]
-    if not items:
-        st.info("Seu histórico aparecerá aqui conforme você registrar atividades.")
-        return
-    for record_date, title, detail, record_id, kind in sorted(items, key=lambda item: (item[0], item[3]), reverse=True):
-        left, right = st.columns([5, 1])
-        left.markdown(f"**{record_date.strftime('%d/%m/%Y')} — {title}**\n\n{detail}")
-        if right.button("Excluir", key=f"delete-{kind}-{record_id}"):
-            key = (kind, record_id)
-            if st.session_state.get("confirm_delete") == key:
-                model = {"fuel": FuelRecord, "maintenance": MaintenanceRecord, "expense": ExpenseRecord}[kind]
-                with SessionLocal() as db:
-                    obj = db.get(model, record_id)
-                    if obj and obj.vehicle_id == vehicle.id:
-                        db.delete(obj)
-                        db.commit()
-                st.session_state.pop("confirm_delete", None)
-                st.rerun()
-            else:
-                st.session_state.confirm_delete = key
-                st.warning("Clique novamente para confirmar.")
-        st.divider()
+    page_header("HISTÓRICO", "Linha do tempo", "Uma visão única de tudo o que aconteceu com o veículo.")
+    fuels,maint,expenses=load_records(vehicle.id); rows=[]
+    for x in fuels: rows.append({"Data":x.date,"Tipo":"Abastecimento","Descrição":f"{x.liters} L · {x.fuel_type}","Valor":money(x.total_cost),"Km":x.odometer,"id":x.id,"model":"fuel"})
+    for x in maint: rows.append({"Data":x.date,"Tipo":"Manutenção","Descrição":x.description,"Valor":money(x.cost),"Km":x.odometer,"id":x.id,"model":"maintenance"})
+    for x in expenses: rows.append({"Data":x.date,"Tipo":"Despesa","Descrição":x.description,"Valor":money(x.amount),"Km":None,"id":x.id,"model":"expense"})
+    if not rows: st.info("Seu histórico aparecerá aqui conforme você registrar eventos."); return
+    df=pd.DataFrame(rows).sort_values(["Data","id"],ascending=False); st.dataframe(df[["Data","Tipo","Descrição","Valor","Km"]],use_container_width=True,hide_index=True)
+    with st.expander("Excluir registro"):
+        options={f"{r['Data'].strftime('%d/%m/%Y')} · {r['Tipo']} · {r['Descrição']}":r for r in rows}
+        selected=st.selectbox("Selecione um registro",list(options)); r=options[selected]
+        if st.button("Excluir definitivamente",type="secondary"):
+            model={"fuel":FuelRecord,"maintenance":MaintenanceRecord,"expense":ExpenseRecord}[r["model"]]
+            with SessionLocal() as db:
+                obj=db.get(model,r["id"])
+                if obj and getattr(obj,"vehicle_id",None)==vehicle.id: db.delete(obj); db.commit()
+            st.success("Registro excluído."); st.rerun()
 
 
 def ai_page(vehicle: Vehicle) -> None:
-    st.title("🤖 Registrar com IA")
-    st.caption("A IA interpreta o texto ou recibo. Nada é salvo sem sua confirmação.")
-    text = st.text_area("Descreva o que aconteceu", placeholder="Abasteci hoje com 42 litros de gasolina a 6,19 e o carro estava com 72.430 km.")
-    upload = st.file_uploader("Ou envie uma foto de recibo", type=["jpg", "jpeg", "png", "webp"])
-    if upload and upload.size > 10 * 1024 * 1024:
-        st.error("A imagem deve ter no máximo 10 MB.")
+    page_header("ASSISTENTE", "Registrar com IA", "Envie uma foto do comprovante e deixe o Gemini estruturar os dados.")
+    if not GEMINI_API_KEY:
+        st.warning("A IA não está configurada. Adicione GEMINI_API_KEY aos Secrets do Streamlit.")
         return
-    if st.button("Analisar", type="primary"):
-        if not GEMINI_API_KEY:
-            st.error("GEMINI_API_KEY não configurada.")
-        elif not text.strip() and not upload:
-            st.warning("Informe um texto ou envie um recibo.")
-        elif upload and upload.type not in {"image/jpeg", "image/png", "image/webp"}:
-            st.error("Formato de imagem não suportado.")
-        else:
-            prompt = """Você é um extrator de registros automotivos. Retorne SOMENTE JSON válido. Nunca invente dados; use null quando desconhecido. Tipos: fuel, maintenance, expense. Campos: type, date (YYYY-MM-DD), odometer, liters, price_per_liter, fuel_type, category, description, cost, station, workshop, confidence. Não inclua placa, e-mail ou outros dados pessoais. Para recibos, use somente dados visíveis. Para texto, preserve exatamente os números fornecidos."""
-            if text.strip():
-                prompt += "\nTexto do usuário:\n" + text.strip()
-            result = ai_request(prompt, upload.getvalue() if upload else None, upload.type if upload else "image/jpeg")
-            parsed = parse_ai_json(result) if result else None
-            if parsed:
-                st.session_state.ai_result = parsed
-                st.success("Análise concluída. Revise antes de salvar.")
-            else:
-                st.error("A IA não retornou um JSON válido. Tente novamente.")
-    data = st.session_state.get("ai_result")
+    upload=st.file_uploader("Foto do comprovante",type=["jpg","jpeg","png","webp"],help="Use uma imagem nítida. Revise os dados antes de salvar.")
+    if upload:
+        st.image(upload,width=420)
+        if st.button("Analisar comprovante",type="primary"):
+            prompt='''Analise este comprovante automotivo. Retorne SOMENTE JSON com as chaves: type (fuel, maintenance ou expense), date (YYYY-MM-DD), odometer (number), liters (number), price_per_liter (number), fuel_type (string), station (string), category (string), description (string), cost (number). Use null quando não houver informação. Não invente valores.'''
+            with st.spinner("Lendo comprovante…"):
+                raw=ai_request(prompt,upload.getvalue(),upload.type or "image/jpeg")
+            data=parse_ai_json(raw or "") if raw else None
+            if data: st.session_state.ai_result=data
+            else: st.error("Não consegui interpretar o comprovante. Tente uma foto mais nítida.")
+    data=st.session_state.get("ai_result")
     if data:
-        st.subheader("Resultado para revisão")
+        st.markdown('<div class="section-title">Revise antes de salvar</div>',unsafe_allow_html=True)
         st.json(data)
-        if st.button("Confirmar e salvar", type="primary"):
-            try:
-                ok, message = save_ai_result(vehicle, data)
-            except (ValueError, InvalidOperation, SQLAlchemyError) as exc:
-                ok, message = False, "Não foi possível salvar o registro. Revise os dados."
-            if ok:
-                st.session_state.pop("ai_result", None)
-                st.success(message)
-                st.rerun()
-            else:
-                st.error(message)
-        if st.button("Descartar resultado"):
-            st.session_state.pop("ai_result", None)
-            st.rerun()
+        c1,c2=st.columns(2)
+        if c1.button("Salvar registro",type="primary",use_container_width=True):
+            ok,msg=save_ai_result(vehicle,data); (st.success if ok else st.error)(msg)
+            if ok: st.session_state.pop("ai_result",None); st.rerun()
+        if c2.button("Descartar",use_container_width=True): st.session_state.pop("ai_result",None); st.rerun()
 
 
 def insights_page(vehicle: Vehicle) -> None:
-    st.title("💡 Insights")
-    fuels, maint, expenses = load_records(vehicle.id)
-    if not fuels and not maint and not expenses:
-        st.info("Registre alguns dados para receber insights reais.")
-        return
-    total_fuel = sum((Decimal(x.total_cost) for x in fuels), Decimal())
-    total_maint = sum((Decimal(x.cost) for x in maint), Decimal())
-    total_exp = sum((Decimal(x.amount) for x in expenses), Decimal())
-    st.write(f"**Combustível:** {money(total_fuel)} · **Manutenção:** {money(total_maint)} · **Outras despesas:** {money(total_exp)}")
-    consumptions = consumption_rows(fuels)
-    if consumptions:
-        avg = sum(x["consumption"] for x in consumptions) / len(consumptions)
-        st.success(f"Seu consumo médio calculável está em **{avg:.2f} km/L**.")
-    if len(fuels) >= 2:
-        distance = fuels[-1].odometer - fuels[0].odometer
-        if distance > 0:
-            st.success(f"Há {distance:,} km de histórico entre abastecimentos.".replace(",", "."))
-    if GEMINI_API_KEY and st.button("Gerar explicação com Gemini"):
-        summary = f"combustível={float(total_fuel):.2f}; manutenção={float(total_maint):.2f}; outras={float(total_exp):.2f}; abastecimentos={len(fuels)}; manutenções={len(maint)}; despesas={len(expenses)}"
-        explanation = ai_request("Explique de forma curta e útil estes indicadores. Não crie números novos: " + summary)
-        if explanation:
-            st.write(explanation)
-        else:
-            st.error("Não foi possível gerar a explicação agora.")
+    fuels,maint,expenses=load_records(vehicle.id); page_header("INTELIGÊNCIA", "Insights", "Indicadores simples para você tomar decisões melhores.")
+    cons=consumption_rows(fuels)
+    if not fuels and not maint and not expenses: st.info("Registre alguns eventos para liberar os insights."); return
+    total=sum((Decimal(x.total_cost) for x in fuels),Decimal())+sum((Decimal(x.cost) for x in maint),Decimal())+sum((Decimal(x.amount) for x in expenses),Decimal())
+    avg=sum(x["consumption"] for x in cons[-10:])/len(cons[-10:]) if cons else None
+    cols=st.columns(3)
+    with cols[0]: kpi("Custo acumulado",money(total),"todos os registros")
+    with cols[1]: kpi("Consumo",f"{avg:.1f} km/L" if avg else "—","média recente")
+    with cols[2]: kpi("Manutenções",str(len(maint)),"serviços registrados")
+    st.write("")
+    if avg:
+        st.markdown(f'<div class="kpi"><div class="kpi-label">Leitura</div><div class="kpi-value">{avg:.1f} km/L</div><div class="kpi-note">Quanto maior, menor tende a ser o gasto por quilômetro.</div></div>',unsafe_allow_html=True)
+    if cons:
+        chart=px.bar(pd.DataFrame(cons),x="date",y="consumption"); chart.update_layout(template="plotly_dark",paper_bgcolor="rgba(0,0,0,0)",plot_bgcolor="rgba(0,0,0,0)",height=300,margin=dict(l=0,r=0,t=10,b=0),yaxis_title="km/L",xaxis_title=None); st.plotly_chart(chart,use_container_width=True,config={"displayModeBar":False})
 
 
-def settings_page(user: User) -> None:
-    st.title("⚙️ Configurações")
-    st.write(f"**Conta:** {user.email}")
-    if user.plan == "trial":
-        days = max(0, (user.trial_ends_at.date() - date.today()).days)
-        st.info(f"Período gratuito: **{days} dias restantes**.")
-    else:
-        st.info("Plano atual: **Free**.")
-    st.divider()
-    st.subheader("Veículo")
-    vehicle_form(user)
-    st.divider()
-    st.subheader("Convide amigos")
-    st.code(user.referral_code)
-    st.caption("Código de indicação reservado para a próxima etapa do produto.")
-    st.divider()
-    st.subheader("Feedback")
-    with st.form("feedback_form"):
-        rating = st.slider("Como está sua experiência?", 1, 5, 5)
-        message = st.text_area("Comentários")
-        if st.form_submit_button("Enviar feedback"):
-            with SessionLocal() as db:
-                db.add(Feedback(user_id=user.id, rating=rating, message=message.strip()))
-                db.commit()
-            st.success("Obrigado pelo feedback!")
+def settings_page(user: User, vehicle: Vehicle) -> None:
+    page_header("CONTA", "Configurações", "Dados do veículo e preferências da sua conta.")
+    tab1,tab2,tab3=st.tabs(["Veículo","Conta","Feedback"])
+    with tab1: vehicle_form(user)
+    with tab2:
+        st.markdown(f"**E-mail**  \n{user.email}")
+        st.markdown(f"**Plano**  \n{('Trial · '+str(max(0,(user.trial_ends_at.date()-date.today()).days))+' dias restantes') if user.plan=='trial' else 'Free'}")
+        st.markdown(f"**Código de convite**  \n`{user.referral_code}`")
+    with tab3:
+        with st.form("feedback_form"):
+            rating=st.slider("Como está sua experiência?",1,5,5); message=st.text_area("Comentário")
+            if st.form_submit_button("Enviar feedback",type="primary"):
+                with SessionLocal() as db: db.add(Feedback(user_id=user.id,rating=rating,message=message.strip())); db.commit()
+                st.success("Obrigado pelo feedback.")
 
 
 def main() -> None:
-    user = current_user()
-    if not user:
-        auth_page()
-        return
-    user = refresh_plan(user.id)
-    if not user or not user.is_active:
-        st.session_state.clear()
-        st.error("Sua sessão não está mais ativa.")
-        st.rerun()
+    user=current_user()
+    if not user: auth_page(); return
+    user=refresh_plan(user.id)
+    if not user or not user.is_active: st.session_state.clear(); st.rerun()
+    vehicle=vehicle_for(user.id)
     with st.sidebar:
-        st.markdown("# 🚗 Meu Carro")
-        st.caption(user.email)
-        st.caption(f"Trial: {max(0, (user.trial_ends_at.date() - date.today()).days)} dias restantes" if user.plan == "trial" else "Plano: Free")
-        if st.button("Sair"):
-            st.session_state.clear()
-            st.rerun()
-    vehicle = vehicle_for(user.id)
+        st.markdown('<div class="brand"><div class="brand-mark">🚗</div><div><div class="brand-title">Meu Carro</div><div class="brand-sub">Personal vehicle intelligence</div></div></div>',unsafe_allow_html=True)
+        if vehicle: st.markdown(f'<div class="status good">● {vehicle.brand} {vehicle.model}</div><div style="height:12px"></div>',unsafe_allow_html=True)
+        trial=f"{max(0,(user.trial_ends_at.date()-date.today()).days)} dias restantes" if user.plan=="trial" else "Plano Free"
+        st.caption(trial)
+        if vehicle:
+            page=st.radio("Navegação",["Início","Abastecimentos","Manutenção","Despesas","Histórico","Registrar com IA","Insights","Configurações"],label_visibility="collapsed")
+        else: page="Configurações"
+        st.divider(); st.caption(user.email)
+        if st.button("Sair",use_container_width=True): st.session_state.clear(); st.rerun()
     if not vehicle:
-        st.title("Vamos começar")
-        st.write("Cadastre seu veículo para usar o Meu Carro.")
-        vehicle_form(user)
-        return
-    with st.sidebar:
-        page = st.radio("Menu", ["🏠 Início", "⛽ Abastecimentos", "🔧 Manutenção", "💰 Despesas", "📋 Histórico", "🤖 Registrar com IA", "💡 Insights", "⚙️ Configurações"])
-    if page == "🏠 Início":
-        home_page(vehicle)
-    elif page == "⛽ Abastecimentos":
-        fuel_page(vehicle)
-    elif page == "🔧 Manutenção":
-        maintenance_page(vehicle)
-    elif page == "💰 Despesas":
-        expenses_page(vehicle)
-    elif page == "📋 Histórico":
-        history_page(vehicle)
-    elif page == "🤖 Registrar com IA":
-        ai_page(vehicle)
-    elif page == "💡 Insights":
-        insights_page(vehicle)
-    else:
-        settings_page(user)
+        page_header("PRIMEIRO PASSO","Cadastre seu veículo","Leva menos de um minuto e libera todo o painel.")
+        vehicle_form(user); return
+    routes={"Início":home_page,"Abastecimentos":fuel_page,"Manutenção":maintenance_page,"Despesas":expenses_page,"Histórico":history_page,"Registrar com IA":ai_page,"Insights":insights_page}
+    if page in routes: routes[page](vehicle)
+    else: settings_page(user,vehicle)
 
 
 if __name__ == "__main__":
