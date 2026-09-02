@@ -1,0 +1,6 @@
+{
+  "name": "Meu Carro",
+  "description": "Acompanhamento inteligente de veículo, abastecimentos, manutenções e gastos com insights e IA.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
