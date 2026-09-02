@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -38,7 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -56,7 +55,6 @@ import com.example.ui.theme.DarkBorder
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.TealAccent
-import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.viewmodel.ActiveDialog
 import com.example.ui.viewmodel.CarViewModel
@@ -87,9 +85,7 @@ fun MeuCarroApp(viewModel: CarViewModel) {
     }
 
     Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground),
+        modifier = Modifier.fillMaxSize().background(DarkBackground),
         containerColor = DarkBackground,
         bottomBar = {
             SophisticatedBottomBar(
@@ -114,7 +110,6 @@ fun MeuCarroApp(viewModel: CarViewModel) {
         }
     }
 
-    // Modal dialogs and AI flows host
     AppDialogsHost(viewModel = viewModel)
 }
 
@@ -135,28 +130,14 @@ fun SophisticatedBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
+                .height(68.dp)
                 .padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            NavTabItem(
-                title = "Início",
-                icon = Icons.Default.DirectionsCar,
-                isSelected = selectedTab == 0,
-                testTag = "nav_tab_home",
-                onClick = { onTabSelected(0) }
-            )
+            NavTabItem("Início", Icons.Default.DirectionsCar, selectedTab == 0, "nav_tab_home") { onTabSelected(0) }
+            NavTabItem("Combustível", Icons.Default.LocalGasStation, selectedTab == 1, "nav_tab_fuel") { onTabSelected(1) }
 
-            NavTabItem(
-                title = "Combustível",
-                icon = Icons.Default.LocalGasStation,
-                isSelected = selectedTab == 1,
-                testTag = "nav_tab_fuel",
-                onClick = { onTabSelected(1) }
-            )
-
-            // Center Quick Action (+) Button
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -168,27 +149,14 @@ fun SophisticatedBottomBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Ação Rápida ou IA",
-                    tint = Color(0xFF0F172A),
+                    contentDescription = "Ação rápida",
+                    tint = Color(0xFF111111),
                     modifier = Modifier.size(26.dp)
                 )
             }
 
-            NavTabItem(
-                title = "Manutenção",
-                icon = Icons.Default.Build,
-                isSelected = selectedTab == 2,
-                testTag = "nav_tab_maintenance",
-                onClick = { onTabSelected(2) }
-            )
-
-            NavTabItem(
-                title = "Gastos",
-                icon = Icons.Default.Payments,
-                isSelected = selectedTab == 3,
-                testTag = "nav_tab_expenses",
-                onClick = { onTabSelected(3) }
-            )
+            NavTabItem("Manutenção", Icons.Default.Build, selectedTab == 2, "nav_tab_maintenance") { onTabSelected(2) }
+            NavTabItem("Gastos", Icons.Default.Payments, selectedTab == 3, "nav_tab_expenses") { onTabSelected(3) }
         }
     }
 }
@@ -216,7 +184,7 @@ private fun NavTabItem(
             tint = if (isSelected) TealAccent else TextSecondary,
             modifier = Modifier.size(22.dp)
         )
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(3.dp))
         Text(
             text = title,
             fontSize = 11.sp,
