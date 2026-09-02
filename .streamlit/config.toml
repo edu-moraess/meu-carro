@@ -1,6 +1,6 @@
 [theme]
 base = "dark"
-primaryColor = "#2563EB"
+primaryColor = "#F5C542"
 font = "sans serif"
 
 [server]
