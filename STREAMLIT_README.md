@@ -1,6 +1,6 @@
 # Meu Carro — Streamlit MVP
 
-Versão web do Meu Carro construída em Python + Streamlit. O projeto original Android permanece no repositório; esta versão fica em `streamlit_app.py` para facilitar execução e deploy.
+Versão web do Meu Carro construída em Python + Streamlit. O projeto Android existente permanece no repositório; esta versão usa `streamlit_app.py` como entrada para execução e deploy.
 
 ## Funcionalidades
 
@@ -10,9 +10,9 @@ Versão web do Meu Carro construída em Python + Streamlit. O projeto original A
 - abastecimentos e cálculo de consumo;
 - manutenção;
 - despesas;
-- histórico;
+- histórico com exclusão confirmada;
 - dashboard com Plotly;
-- registro assistido por Gemini (sem salvamento automático);
+- registro assistido por Gemini com revisão e confirmação antes de salvar;
 - insights baseados nos dados reais;
 - feedback;
 - SQLite para desenvolvimento local e PostgreSQL via `DATABASE_URL` para produção.
@@ -44,7 +44,7 @@ Não versione chaves ou senhas.
 
 ## Deploy no Streamlit Community Cloud
 
-1. Selecione este repositório.
+1. Selecione o repositório `edu-moraess/meu-carro`.
 2. Branch: `feat/streamlit-mvp` (ou `main` depois do merge).
 3. Main file path: `streamlit_app.py`.
 4. Configure `DATABASE_URL` e, se quiser IA, `GEMINI_API_KEY` nos Secrets.
@@ -52,4 +52,4 @@ Não versione chaves ou senhas.
 
 ## Observação de produção
 
-O SQLite é adequado para desenvolvimento local. Para usuários reais, utilize PostgreSQL gerenciado. O cálculo financeiro e de consumo é feito no Python; o Gemini é apenas uma camada de interpretação/explicação e nunca grava automaticamente um registro.
+O SQLite é adequado para desenvolvimento local. Para usuários reais, utilize PostgreSQL gerenciado. O cálculo financeiro e de consumo é feito no Python. O Gemini interpreta/explica os dados e só cria um registro quando o usuário revisa e confirma o resultado.
